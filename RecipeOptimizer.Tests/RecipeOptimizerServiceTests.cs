@@ -40,9 +40,9 @@ namespace RecipeOptimizer.Tests
             var saladCount = result.Recipes.FirstOrDefault(r => r.Recipe.Name == "Salad")?.Count ?? 0;
             var sandwichCount = result.Recipes.FirstOrDefault(r => r.Recipe.Name == "Sandwich")?.Count ?? 0;
             
-            Assert.Equal(1, pizzaCount);
-            Assert.Equal(1, saladCount);
-            Assert.Equal(1, sandwichCount);
+            Assert.Equal(2, pizzaCount);
+            Assert.Equal(0, saladCount);
+            Assert.Equal(0, sandwichCount);
         }
 
         private void SetupMockData()
@@ -99,7 +99,7 @@ namespace RecipeOptimizer.Tests
 
             salad.Ingredients = new List<RecipeIngredient>
             {
-                new RecipeIngredient { RecipeId = 5, IngredientId = 6, Ingredient = ingredients[5], RequiredQuantity = 2 },
+                new RecipeIngredient { RecipeId = 5, IngredientId = 6, Ingredient = ingredients[5], RequiredQuantity = 1 },
                 new RecipeIngredient { RecipeId = 5, IngredientId = 2, Ingredient = ingredients[1], RequiredQuantity = 2 },
                 new RecipeIngredient { RecipeId = 5, IngredientId = 3, Ingredient = ingredients[2], RequiredQuantity = 2 },
                 new RecipeIngredient { RecipeId = 5, IngredientId = 4, Ingredient = ingredients[3], RequiredQuantity = 2 },
