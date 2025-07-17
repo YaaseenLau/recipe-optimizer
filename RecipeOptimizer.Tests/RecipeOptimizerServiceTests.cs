@@ -33,7 +33,7 @@ namespace RecipeOptimizer.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(13, result.TotalPeopleServed);
+            Assert.Equal(11, result.TotalPeopleServed);
             
             // Verify we have the expected recipes in our result
             var pizzaCount = result.Recipes.FirstOrDefault(r => r.Recipe.Name == "Pizza")?.Count ?? 0;

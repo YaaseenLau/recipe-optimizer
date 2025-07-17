@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using RecipeOptimizer.API.Controllers;
+using RecipeOptimizer.API.DTOs;
 using RecipeOptimizer.Core.Interfaces;
 using RecipeOptimizer.Core.Models;
 using Xunit;
@@ -61,11 +62,12 @@ namespace RecipeOptimizer.Tests
                 .ReturnsAsync(expectedResult);
 
             // Act
-            var result = await _controller.OptimizeRecipes();
+            var actionResult = await _controller.OptimizeRecipes();
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var returnValue = Assert.IsType<OptimizationResult>(okResult.Value);
+            var okResult = Assert.IsType<ActionResult<OptimizationResultDto>>(actionResult);
+            var result = Assert.IsType<OkObjectResult>(okResult.Result);
+            var returnValue = Assert.IsType<OptimizationResultDto>(result.Value);
             Assert.Equal(expectedResult.TotalPeopleServed, returnValue.TotalPeopleServed);
             Assert.Equal(expectedResult.Recipes.Count, returnValue.Recipes.Count);
         }
