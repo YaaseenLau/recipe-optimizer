@@ -1,17 +1,20 @@
 {
   "AWSEBDockerrunVersion": "1",
   "Image": {
-    "Name": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
+    "Name": "mcr.microsoft.com/dotnet/aspnet:8.0",
     "Update": "true"
-  },
-  "Authentication": {
-    "Bucket": "elasticbeanstalk-${AWS_REGION}-${AWS_ACCOUNT_ID}",
-    "Key": "docker-credentials.json"
   },
   "Ports": [
     {
       "ContainerPort": 80,
       "HostPort": 80
     }
-  ]
+  ],
+  "Volumes": [
+    {
+      "HostDirectory": "/var/app",
+      "ContainerDirectory": "/app"
+    }
+  ],
+  "Command": "dotnet RecipeOptimizer.API.dll"
 }

@@ -23,76 +23,23 @@ jobs:
         dotnet build --no-restore
         dotnet test --no-build --verbosity normal
     
+    - name: Publish .NET application
+      run: |
+        dotnet publish RecipeOptimizer.API/RecipeOptimizer.API.csproj -c Release -o ./publish
+    
+    - name: Create deployment package
+      run: |
+        cp Dockerrun.aws.json ./publish/
+        cd publish
+        zip -r ../deploy.zip *
+        cd ..
+    
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ secrets.AWS_REGION }}
-    
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-    
-    - name: Build, tag, and push image to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: recipe-optimizer
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Build a docker container and push it to ECR
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-    
-    - name: Get AWS account ID
-      id: get-aws-account
-      run: |
-        echo "::set-output name=account_id::$(aws sts get-caller-identity --query Account --output text)"
-
-    - name: Generate Docker credentials
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_TOKEN: ${{ steps.login-ecr.outputs.token }}
-      run: |
-        echo '{"auths":{"'$ECR_REGISTRY'":{"auth":"'$ECR_TOKEN'"}}}' > docker-credentials.json
-
-    - name: Upload Docker credentials to S3
-      env:
-        AWS_REGION: ${{ secrets.AWS_REGION }}
-        AWS_ACCOUNT_ID: ${{ steps.get-aws-account.outputs.account_id }}
-      run: |
-        aws s3 cp docker-credentials.json s3://elasticbeanstalk-$AWS_REGION-$AWS_ACCOUNT_ID/docker-credentials.json
-
-    - name: Generate Dockerrun.aws.json
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: recipe-optimizer
-        IMAGE_TAG: ${{ github.sha }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
-        AWS_ACCOUNT_ID: ${{ steps.get-aws-account.outputs.account_id }}
-      run: |
-        cat > Dockerrun.aws.json << EOF
-        {
-          "AWSEBDockerrunVersion": "1",
-          "Image": {
-            "Name": "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
-            "Update": "true"
-          },
-          "Authentication": {
-            "Bucket": "elasticbeanstalk-$AWS_REGION-$AWS_ACCOUNT_ID",
-            "Key": "docker-credentials.json"
-          },
-          "Ports": [
-            {
-              "ContainerPort": 80,
-              "HostPort": 80
-            }
-          ]
-        }
-        EOF
     
     - name: Deploy to EB
       uses: einaregilsson/beanstalk-deploy@v21
@@ -103,6 +50,6 @@ jobs:
         environment_name: recipe-optimizer-prod
         version_label: ${{ github.sha }}
         region: ${{ secrets.AWS_REGION }}
-        deployment_package: Dockerrun.aws.json
+        deployment_package: deploy.zip
         wait_for_deployment: true
         use_existing_version_if_available: false
