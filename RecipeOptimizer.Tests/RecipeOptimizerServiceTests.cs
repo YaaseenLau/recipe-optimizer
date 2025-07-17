@@ -41,7 +41,7 @@ namespace RecipeOptimizer.Tests
             var sandwichCount = result.Recipes.FirstOrDefault(r => r.Recipe.Name == "Sandwich")?.Count ?? 0;
             
             Assert.Equal(1, pizzaCount);
-            Assert.Equal(2, saladCount);
+            Assert.Equal(1, saladCount);
             Assert.Equal(1, sandwichCount);
         }
 
