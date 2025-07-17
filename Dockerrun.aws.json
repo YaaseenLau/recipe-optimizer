@@ -16,5 +16,15 @@
       "ContainerDirectory": "/app"
     }
   ],
-  "Command": "dotnet RecipeOptimizer.API.dll"
+  "Command": "cd /app && dotnet RecipeOptimizer.API.dll",
+  "Environment": [
+    {
+      "Name": "ASPNETCORE_ENVIRONMENT",
+      "Value": "Production"
+    },
+    {
+      "Name": "ConnectionStrings__DefaultConnection",
+      "Value": "Host=${RDS_HOSTNAME};Port=${RDS_PORT};Database=${RDS_DB_NAME};Username=${RDS_USERNAME};Password=${RDS_PASSWORD}"
+    }
+  ]
 }

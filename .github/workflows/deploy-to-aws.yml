@@ -29,7 +29,35 @@ jobs:
     
     - name: Create deployment package
       run: |
+        # Create .ebextensions directory for environment configuration
+        mkdir -p .ebextensions
+        
+        # Create RDS environment configuration
+        cat > .ebextensions/01-environment.config << EOF
+        option_settings:
+          aws:elasticbeanstalk:application:environment:
+            ASPNETCORE_ENVIRONMENT: Production
+        EOF
+        
+        cat > .ebextensions/02-rds-environment.config << EOF
+        option_settings:
+          aws:elasticbeanstalk:application:environment:
+            RDS_HOSTNAME: \${RDS_HOSTNAME}
+            RDS_PORT: \${RDS_PORT}
+            RDS_DB_NAME: \${RDS_DB_NAME}
+            RDS_USERNAME: \${RDS_USERNAME}
+            RDS_PASSWORD: \${RDS_PASSWORD}
+        EOF
+        
+        # Create Procfile for application startup
+        echo "web: cd /app && dotnet RecipeOptimizer.API.dll --urls=http://+:80" > Procfile
+        
+        # Copy configuration files to publish directory
         cp Dockerrun.aws.json ./publish/
+        cp -r .ebextensions ./publish/
+        cp Procfile ./publish/
+        
+        # Create deployment package
         cd publish
         zip -r ../deploy.zip *
         cd ..
