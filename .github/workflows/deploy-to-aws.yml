@@ -47,11 +47,32 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
     
+    - name: Get AWS account ID
+      id: get-aws-account
+      run: |
+        echo "::set-output name=account_id::$(aws sts get-caller-identity --query Account --output text)"
+
+    - name: Generate Docker credentials
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_TOKEN: ${{ steps.login-ecr.outputs.token }}
+      run: |
+        echo '{"auths":{"'$ECR_REGISTRY'":{"auth":"'$ECR_TOKEN'"}}}' > docker-credentials.json
+
+    - name: Upload Docker credentials to S3
+      env:
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_ACCOUNT_ID: ${{ steps.get-aws-account.outputs.account_id }}
+      run: |
+        aws s3 cp docker-credentials.json s3://elasticbeanstalk-$AWS_REGION-$AWS_ACCOUNT_ID/docker-credentials.json
+
     - name: Generate Dockerrun.aws.json
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: recipe-optimizer
         IMAGE_TAG: ${{ github.sha }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_ACCOUNT_ID: ${{ steps.get-aws-account.outputs.account_id }}
       run: |
         cat > Dockerrun.aws.json << EOF
         {
@@ -59,6 +80,10 @@ jobs:
           "Image": {
             "Name": "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
             "Update": "true"
+          },
+          "Authentication": {
+            "Bucket": "elasticbeanstalk-$AWS_REGION-$AWS_ACCOUNT_ID",
+            "Key": "docker-credentials.json"
           },
           "Ports": [
             {

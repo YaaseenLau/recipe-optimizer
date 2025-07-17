@@ -16,9 +16,9 @@ _ReSharper*/
 
 ## Docker
 .dockerignore
-Dockerfile
 docker-compose.yml
 docker-compose.*.yml
+# Keeping Dockerfile for CI/CD
 
 ## AWS
 .elasticbeanstalk/

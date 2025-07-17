@@ -1,0 +1,17 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
+    "Update": "true"
+  },
+  "Authentication": {
+    "Bucket": "elasticbeanstalk-${AWS_REGION}-${AWS_ACCOUNT_ID}",
+    "Key": "docker-credentials.json"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 80,
+      "HostPort": 80
+    }
+  ]
+}
