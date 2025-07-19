@@ -22,24 +22,36 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 // Add health checks including database
 var healthCheckConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// In production, build connection string directly from environment variables
+// In production, use a direct connection string for Azure PostgreSQL
 if (builder.Environment.IsProduction())
 {
-    var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
-    var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT");
-    var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
-    var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
-    var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
-    
-    if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && 
-        !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+    // Use the DefaultConnection if it's set as an environment variable
+    var connectionStringEnv = Environment.GetEnvironmentVariable("DefaultConnection");
+    if (!string.IsNullOrEmpty(connectionStringEnv))
     {
-        // Format for Azure PostgreSQL
-        if (host.EndsWith(".postgres.database.azure.com"))
+        healthCheckConnectionString = connectionStringEnv;
+        Console.WriteLine("Using DefaultConnection environment variable for health check");
+    }
+    else
+    {
+        // Otherwise build from individual environment variables
+        var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
+        var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT");
+        var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
+        var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
+        var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
+        
+        if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && 
+            !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
         {
-            // Azure PostgreSQL requires username@servername format
-            var serverName = host.Replace(".postgres.database.azure.com", "");
-            healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+            // Format for Azure PostgreSQL
+            if (host.EndsWith(".postgres.database.azure.com"))
+            {
+                // Azure PostgreSQL requires username@servername format
+                var serverName = host.Replace(".postgres.database.azure.com", "");
+                healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                Console.WriteLine($"Built health check connection string from environment variables for host: {host}");
+            }
         }
     }
 }
@@ -79,24 +91,36 @@ builder.Services.AddDbContext<RecipeOptimizerDbContext>(options =>
     // Get connection string from configuration
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     
-    // In production, build connection string directly from environment variables
+    // In production, use a direct connection string for Azure PostgreSQL
     if (builder.Environment.IsProduction())
     {
-        var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
-        var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT");
-        var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
-        var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
-        var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
-        
-        if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && 
-            !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+        // Use the DefaultConnection if it's set as an environment variable
+        var connectionStringEnv = Environment.GetEnvironmentVariable("DefaultConnection");
+        if (!string.IsNullOrEmpty(connectionStringEnv))
         {
-            // Format for Azure PostgreSQL
-            if (host.EndsWith(".postgres.database.azure.com"))
+            connectionString = connectionStringEnv;
+            Console.WriteLine("Using DefaultConnection environment variable for DbContext");
+        }
+        else
+        {
+            // Otherwise build from individual environment variables
+            var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
+            var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT");
+            var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
+            var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
+            var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
+            
+            if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && 
+                !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
             {
-                // Azure PostgreSQL requires username@servername format
-                var serverName = host.Replace(".postgres.database.azure.com", "");
-                connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                // Format for Azure PostgreSQL
+                if (host.EndsWith(".postgres.database.azure.com"))
+                {
+                    // Azure PostgreSQL requires username@servername format
+                    var serverName = host.Replace(".postgres.database.azure.com", "");
+                    connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                    Console.WriteLine($"Built DbContext connection string from environment variables for host: {host}");
+                }
             }
         }
     }
@@ -184,25 +208,50 @@ app.MapGet("/diagnostics", async (IServiceProvider serviceProvider) => {
     var connectionString = config.GetConnectionString("DefaultConnection");
     var sanitizedConnectionString = "Not available";
     
-    // In production, build connection string directly from environment variables
+    // In production, use a direct connection string for Azure PostgreSQL
     if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production")
     {
-        var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
-        var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT");
-        var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
-        var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
-        var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
-        
-        if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && 
-            !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+        // Use the DefaultConnection if it's set as an environment variable
+        var connectionStringEnv = Environment.GetEnvironmentVariable("DefaultConnection");
+        if (!string.IsNullOrEmpty(connectionStringEnv))
         {
-            // Format for Azure PostgreSQL
-            if (host.EndsWith(".postgres.database.azure.com"))
+            connectionString = connectionStringEnv;
+            // Create sanitized version for display
+            if (connectionString.Contains("Password="))
             {
-                // Azure PostgreSQL requires username@servername format
-                var serverName = host.Replace(".postgres.database.azure.com", "");
-                connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                sanitizedConnectionString = connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***";
+                if (connectionString.IndexOf(";", connectionString.IndexOf("Password=")) > 0)
+                {
+                    sanitizedConnectionString += connectionString.Substring(connectionString.IndexOf(";", connectionString.IndexOf("Password=")));
+                }
+            }
+            else
+            {
+                sanitizedConnectionString = connectionString;
+            }
+            Console.WriteLine("Using DefaultConnection environment variable for diagnostics");
+        }
+        else
+        {
+            // Otherwise build from individual environment variables
+            var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
+            var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT");
+            var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
+            var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
+            var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
+            
+            if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(port) && !string.IsNullOrEmpty(database) && 
+                !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
+            {
+                // Format for Azure PostgreSQL
+                if (host.EndsWith(".postgres.database.azure.com"))
+                {
+                    // Azure PostgreSQL requires username@servername format
+                    var serverName = host.Replace(".postgres.database.azure.com", "");
+                    connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                    sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                    Console.WriteLine($"Built diagnostics connection string from environment variables for host: {host}");
+                }
             }
         }
     }
