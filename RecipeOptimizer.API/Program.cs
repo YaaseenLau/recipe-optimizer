@@ -78,20 +78,18 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<RecipeOptimizerDbContext>();
         
-        // Create database if it doesn't exist
+        // Create database and apply any pending migrations
+        // This will also apply the seed data defined in OnModelCreating
         context.Database.EnsureCreated();
         
-        // Check if database is empty and needs seeding
-        if (!context.Ingredients.Any())
+        // Check if database has data
+        if (context.Ingredients.Any())
         {
-            // Call the SeedData method to populate the database
-            context.SeedData();
-            context.SaveChanges();
-            Console.WriteLine("Database seeded successfully.");
+            Console.WriteLine("Database already contains data, seeding skipped.");
         }
         else
         {
-            Console.WriteLine("Database already contains data, skipping seed.");
+            Console.WriteLine("Database was created and seeded successfully.");
         }
     }
     catch (Exception ex)
