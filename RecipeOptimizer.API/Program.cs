@@ -79,7 +79,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // Add diagnostic endpoint for Azure troubleshooting
-app.MapGet("/diagnostics", () => {
+app.MapGet("/diagnostics", async (IServiceProvider serviceProvider) => {
     var envVars = new Dictionary<string, string>
     {
         { "POSTGRESQLHOST", Environment.GetEnvironmentVariable("POSTGRESQLHOST") ?? "Not set" },
@@ -90,19 +90,65 @@ app.MapGet("/diagnostics", () => {
         { "ASPNETCORE_ENVIRONMENT", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not set" }
     };
     
-    var connectionString = new ConfigurationBuilder()
+    var config = new ConfigurationBuilder()
         .AddJsonFile("appsettings.json")
         .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
         .AddEnvironmentVariables()
-        .Build()
-        .GetConnectionString("DefaultConnection");
+        .Build();
         
+    var connectionString = config.GetConnectionString("DefaultConnection");
+    var sanitizedConnectionString = "Not available";
+    
+    if (!string.IsNullOrEmpty(connectionString))
+    {
+        sanitizedConnectionString = connectionString.Contains("Password=") 
+            ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" 
+            : connectionString;
+    }
+    
+    // Test database connection
+    string dbConnectionStatus = "Not tested";
+    string dbConnectionError = null;
+    
+    try
+    {   
+        using (var scope = serviceProvider.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<RecipeOptimizerDbContext>();
+            
+            // Test connection by checking if database exists
+            bool canConnect = await dbContext.Database.CanConnectAsync();
+            dbConnectionStatus = canConnect ? "Success" : "Failed";
+            
+            if (canConnect)
+            {
+                // Try to get a count of ingredients to verify data access
+                int ingredientCount = await dbContext.Ingredients.CountAsync();
+                dbConnectionStatus = $"Success - {ingredientCount} ingredients found";
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        dbConnectionStatus = "Error";
+        dbConnectionError = $"{ex.GetType().Name}: {ex.Message}";
+        
+        if (ex.InnerException != null)
+        {
+            dbConnectionError += $" | Inner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
+        }
+    }
+    
     var diagnosticInfo = new {
         Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not set",
         EnvironmentVariables = envVars,
-        ConnectionStringConfigured = !string.IsNullOrEmpty(connectionString) ? "Yes (value hidden)" : "No",
+        ConnectionStringTemplate = sanitizedConnectionString,
+        ConnectionStringConfigured = !string.IsNullOrEmpty(connectionString) ? "Yes" : "No",
+        DatabaseConnectionStatus = dbConnectionStatus,
+        DatabaseConnectionError = dbConnectionError,
         CurrentDirectory = Directory.GetCurrentDirectory(),
-        OSDescription = System.Runtime.InteropServices.RuntimeInformation.OSDescription
+        OSDescription = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+        ServerTime = DateTime.UtcNow.ToString("o")
     };
     
     return diagnosticInfo;
@@ -122,12 +168,14 @@ app.UseExceptionHandler(appError =>
             // Log the error
             Console.WriteLine($"[ERROR] {DateTime.UtcNow}: {contextFeature.Error}");
             
-            // Return detailed error in development, generic in production
+            // TEMPORARY: Show detailed errors in all environments for troubleshooting
             var response = new 
             {
                 StatusCode = context.Response.StatusCode,
-                Message = app.Environment.IsDevelopment() ? contextFeature.Error.Message : "Internal Server Error",
-                Detail = app.Environment.IsDevelopment() ? contextFeature.Error.StackTrace : string.Empty
+                Message = contextFeature.Error.Message,
+                Detail = contextFeature.Error.StackTrace,
+                InnerError = contextFeature.Error.InnerException?.Message ?? string.Empty,
+                Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not set"
             };
                 
             await context.Response.WriteAsJsonAsync(response);
@@ -188,24 +236,55 @@ using (var scope = app.Services.CreateScope())
                 ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" 
                 : connectionString;
             Console.WriteLine($"Attempting to connect with: {sanitizedConnectionString}");
+            
+            // Check for common Azure PostgreSQL issues
+            if (connectionString.Contains("${POSTGRESQLHOST}") || 
+                connectionString.Contains("${POSTGRESQLPORT}") || 
+                connectionString.Contains("${POSTGRESQLDATABASE}") || 
+                connectionString.Contains("${POSTGRESQLUSER}") || 
+                connectionString.Contains("${POSTGRESQLPASSWORD}"))
+            {
+                Console.WriteLine("ERROR: Environment variables in connection string were not replaced!");
+                Console.WriteLine("Check that environment variables are properly set and accessible.");
+            }
+            
+            // Check SSL settings for Azure PostgreSQL
+            if (!connectionString.Contains("SSL Mode=") || !connectionString.Contains("Trust Server Certificate="))
+            {
+                Console.WriteLine("WARNING: Connection string may be missing required Azure PostgreSQL SSL settings.");
+                Console.WriteLine("Azure PostgreSQL requires 'SSL Mode=Require;Trust Server Certificate=true'");
+            }
         }
         else
         {
             Console.WriteLine("WARNING: Connection string is null or empty!");
         }
         
-        // Create database and apply any pending migrations
-        // This will also apply the seed data defined in OnModelCreating
-        context.Database.EnsureCreated();
+        Console.WriteLine("Attempting database connection...");
+        bool canConnect = context.Database.CanConnect();
+        Console.WriteLine($"Database connection test: {(canConnect ? "SUCCESS" : "FAILED")}");
         
-        // Check if database has data
-        if (context.Ingredients.Any())
+        if (canConnect)
         {
-            Console.WriteLine("Database already contains data, seeding skipped.");
+            // Create database and apply any pending migrations
+            // This will also apply the seed data defined in OnModelCreating
+            Console.WriteLine("Ensuring database is created...");
+            context.Database.EnsureCreated();
+            
+            // Check if database has data
+            Console.WriteLine("Checking for existing data...");
+            if (context.Ingredients.Any())
+            {
+                Console.WriteLine("Database already contains data, seeding skipped.");
+            }
+            else
+            {
+                Console.WriteLine("Database was created and seeded successfully.");
+            }
         }
         else
         {
-            Console.WriteLine("Database was created and seeded successfully.");
+            Console.WriteLine("Cannot proceed with database initialization due to connection failure.");
         }
     }
     catch (DbUpdateException dbEx)
