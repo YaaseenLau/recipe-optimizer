@@ -123,9 +123,12 @@ app.UseExceptionHandler(appError =>
             Console.WriteLine($"[ERROR] {DateTime.UtcNow}: {contextFeature.Error}");
             
             // Return detailed error in development, generic in production
-            var response = app.Environment.IsDevelopment()
-                ? new { StatusCode = context.Response.StatusCode, Message = contextFeature.Error.Message, Detail = contextFeature.Error.StackTrace }
-                : new { StatusCode = context.Response.StatusCode, Message = "Internal Server Error" };
+            var response = new 
+            {
+                StatusCode = context.Response.StatusCode,
+                Message = app.Environment.IsDevelopment() ? contextFeature.Error.Message : "Internal Server Error",
+                Detail = app.Environment.IsDevelopment() ? contextFeature.Error.StackTrace : string.Empty
+            };
                 
             await context.Response.WriteAsJsonAsync(response);
         }
