@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using RecipeOptimizer.Core.Interfaces;
@@ -5,6 +7,7 @@ using RecipeOptimizer.Core.Services;
 using RecipeOptimizer.Infrastructure.Data;
 using RecipeOptimizer.Infrastructure.Repositories;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +18,12 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
+
+// Add health checks including database
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"), 
+               name: "postgresql", 
+               tags: new[] { "database", "postgresql" });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -35,7 +44,21 @@ builder.Services.AddCors(options =>
 // Add DbContext
 builder.Services.AddDbContext<RecipeOptimizerDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    Console.WriteLine($"Configuring DbContext with connection string template: {connectionString}");
+    
+    options.UseNpgsql(connectionString, npgsqlOptions => 
+    {
+        npgsqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+        npgsqlOptions.CommandTimeout(30);
+    });
+    
+    // Enable detailed errors in production
+    if (!builder.Environment.IsDevelopment())
+    {
+        options.EnableDetailedErrors();
+        options.EnableSensitiveDataLogging();
+    }
 });
 
 // Register repositories
@@ -85,6 +108,30 @@ app.MapGet("/diagnostics", () => {
     return diagnosticInfo;
 });
 
+// Add global exception handler middleware
+app.UseExceptionHandler(appError =>
+{
+    appError.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        
+        var contextFeature = context.Features.Get<IExceptionHandlerFeature>();
+        if (contextFeature != null)
+        {
+            // Log the error
+            Console.WriteLine($"[ERROR] {DateTime.UtcNow}: {contextFeature.Error}");
+            
+            // Return detailed error in development, generic in production
+            var response = app.Environment.IsDevelopment()
+                ? new { StatusCode = context.Response.StatusCode, Message = contextFeature.Error.Message, Detail = contextFeature.Error.StackTrace }
+                : new { StatusCode = context.Response.StatusCode, Message = "Internal Server Error" };
+                
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    });
+});
+
 app.UseHttpsRedirection();
 
 // Enable CORS
@@ -93,6 +140,31 @@ app.UseCors();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map health check endpoint
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        
+        var response = new
+        {
+            Status = report.Status.ToString(),
+            Duration = report.TotalDuration,
+            Info = report.Entries.Select(e => new
+            {
+                Key = e.Key,
+                Status = e.Value.Status.ToString(),
+                Duration = e.Value.Duration,
+                Description = e.Value.Description,
+                Error = e.Value.Exception?.Message
+            })
+        };
+        
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
