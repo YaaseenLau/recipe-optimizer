@@ -27,6 +27,21 @@ if (healthCheckConnectionString.Contains("${POSTGRESQLPORT}"))
     healthCheckConnectionString = healthCheckConnectionString.Replace("Port=${POSTGRESQLPORT}", "Port=5432");
 }
 
+// Handle Azure PostgreSQL host name format for health checks
+string healthCheckHostVar = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
+if (!string.IsNullOrEmpty(healthCheckHostVar) && !healthCheckConnectionString.Contains(".postgres.database.azure.com"))
+{
+    // Check if we need to add the Azure PostgreSQL domain suffix
+    healthCheckConnectionString = healthCheckConnectionString.Replace($"Host={healthCheckHostVar}", $"Host={healthCheckHostVar}.postgres.database.azure.com");
+    
+    // Also ensure the username has the correct format for Azure PostgreSQL
+    string healthCheckUserVar = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
+    if (!string.IsNullOrEmpty(healthCheckUserVar) && !healthCheckConnectionString.Contains($"Username={healthCheckUserVar}@"))
+    {
+        healthCheckConnectionString = healthCheckConnectionString.Replace($"Username={healthCheckUserVar}", $"Username={healthCheckUserVar}@{healthCheckHostVar}");
+    }
+}
+
 builder.Services.AddHealthChecks()
     .AddNpgSql(healthCheckConnectionString, 
                name: "postgresql", 
@@ -60,6 +75,23 @@ builder.Services.AddDbContext<RecipeOptimizerDbContext>(options =>
         // Replace variable with hardcoded port if not properly substituted
         connectionString = connectionString.Replace("Port=${POSTGRESQLPORT}", "Port=5432");
         Console.WriteLine("WARNING: POSTGRESQLPORT variable not substituted, using default port 5432");
+    }
+    
+    // Handle Azure PostgreSQL host name format
+    string hostVar = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
+    if (!string.IsNullOrEmpty(hostVar) && !connectionString.Contains(".postgres.database.azure.com"))
+    {
+        // Check if we need to add the Azure PostgreSQL domain suffix
+        Console.WriteLine($"Ensuring Azure PostgreSQL domain suffix for host: {hostVar}");
+        connectionString = connectionString.Replace($"Host={hostVar}", $"Host={hostVar}.postgres.database.azure.com");
+        
+        // Also ensure the username has the correct format for Azure PostgreSQL
+        string userVar = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
+        if (!string.IsNullOrEmpty(userVar) && !connectionString.Contains($"Username={userVar}@"))
+        {
+            connectionString = connectionString.Replace($"Username={userVar}", $"Username={userVar}@{hostVar}");
+            Console.WriteLine($"Updated username format for Azure PostgreSQL: {userVar}@{hostVar}");
+        }
     }
     
     options.UseNpgsql(connectionString, npgsqlOptions => 
@@ -104,6 +136,29 @@ app.MapGet("/diagnostics", async (IServiceProvider serviceProvider) => {
         { "POSTGRESQLPASSWORD", Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD") != null ? "Set (value hidden)" : "Not set" },
         { "ASPNETCORE_ENVIRONMENT", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not set" }
     };
+    
+    // Try to resolve host name
+    string hostResolution = "Not tested";
+    string hostName = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
+    if (!string.IsNullOrEmpty(hostName))
+    {
+        try
+        {
+            var hostEntries = System.Net.Dns.GetHostAddresses(hostName);
+            if (hostEntries != null && hostEntries.Length > 0)
+            {
+                hostResolution = string.Join(", ", hostEntries.Select(h => h.ToString()));
+            }
+            else
+            {
+                hostResolution = "No IP addresses found";
+            }
+        }
+        catch (Exception ex)
+        {
+            hostResolution = $"Resolution failed: {ex.Message}";
+        }
+    }
     
     var config = new ConfigurationBuilder()
         .AddJsonFile("appsettings.json")
@@ -161,6 +216,7 @@ app.MapGet("/diagnostics", async (IServiceProvider serviceProvider) => {
         ConnectionStringConfigured = !string.IsNullOrEmpty(connectionString) ? "Yes" : "No",
         DatabaseConnectionStatus = dbConnectionStatus,
         DatabaseConnectionError = dbConnectionError,
+        HostResolution = hostResolution,
         CurrentDirectory = Directory.GetCurrentDirectory(),
         OSDescription = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
         ServerTime = DateTime.UtcNow.ToString("o")
