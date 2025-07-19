@@ -70,4 +70,34 @@ app.MapControllers();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+// Ensure database is created and seeded
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<RecipeOptimizerDbContext>();
+        
+        // Create database if it doesn't exist
+        context.Database.EnsureCreated();
+        
+        // Check if database is empty and needs seeding
+        if (!context.Ingredients.Any())
+        {
+            // Call the SeedData method to populate the database
+            context.SeedData();
+            context.SaveChanges();
+            Console.WriteLine("Database seeded successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Database already contains data, skipping seed.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred while initializing the database: {ex.Message}");
+    }
+}
+
 app.Run();
