@@ -22,64 +22,13 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 // Add health checks including database
 var healthCheckConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// If in production and connection string has environment variables, build it directly
-if (builder.Environment.IsProduction() && healthCheckConnectionString.Contains("${"))
+// Log the health check connection string (sanitized)
+var sanitizedHealthCheckConnectionString = healthCheckConnectionString;
+if (!string.IsNullOrEmpty(healthCheckConnectionString) && healthCheckConnectionString.Contains("Password="))
 {
-    var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
-    var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT") ?? "5432";
-    var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
-    var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
-    var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
-    
-    if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(database) && 
-        !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
-    {
-        // Format for Azure PostgreSQL
-        if (host.EndsWith(".postgres.database.azure.com"))
-        {
-            // Azure PostgreSQL requires username@servername format
-            var serverName = host.Replace(".postgres.database.azure.com", "");
-            
-            // Check if username already contains @ to avoid double formatting
-            if (username.Contains("@"))
-            {
-                // Username already has the correct format, use as is
-                healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                Console.WriteLine($"Health check using pre-formatted username: {username}");
-            }
-            else
-            {
-                healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                Console.WriteLine($"Health check formatted username as: {username}@{serverName}");
-            }
-        }
-        else
-        {
-            // Check if we need to add Azure PostgreSQL suffix
-            if (builder.Environment.IsProduction() && !host.Contains("localhost") && !host.Contains("127.0.0.1"))
-            {
-                // Assume this is Azure PostgreSQL
-                // Check if username already contains @ to avoid double formatting
-                if (username.Contains("@"))
-                {
-                    // Username already has the correct format, use as is
-                    healthCheckConnectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                }
-                else
-                {
-                    healthCheckConnectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username}@{host};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                }
-            }
-            else
-            {
-                // Standard PostgreSQL format
-                healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};Include Error Detail=true";
-            }
-        }
-        
-        Console.WriteLine($"Built health check connection string from environment variables for host: {host}");
-    }
+    sanitizedHealthCheckConnectionString = healthCheckConnectionString.Substring(0, healthCheckConnectionString.IndexOf("Password=")) + "Password=***";
 }
+Console.WriteLine($"Health check connection string: {sanitizedHealthCheckConnectionString}");
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(healthCheckConnectionString, 
@@ -107,72 +56,6 @@ builder.Services.AddDbContext<RecipeOptimizerDbContext>(options =>
 {
     // Get connection string from configuration
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    
-    // Check if we're in production and need to use environment variables directly
-    if (builder.Environment.IsProduction() && connectionString.Contains("${"))
-    {
-        // In production, build connection string directly from environment variables
-        var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
-        var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT") ?? "5432";
-        var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
-        var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
-        var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
-        
-        if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(database) && 
-            !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
-        {
-            // Format for Azure PostgreSQL
-            if (host.EndsWith(".postgres.database.azure.com"))
-            {
-                // Azure PostgreSQL requires username@servername format
-                var serverName = host.Replace(".postgres.database.azure.com", "");
-                
-                // Check if username already contains @ to avoid double formatting
-                if (username.Contains("@"))
-                {
-                    // Username already has the correct format, use as is
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    Console.WriteLine($"Using pre-formatted username: {username}");
-                }
-                else
-                {
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    Console.WriteLine($"Formatted username as: {username}@{serverName}");
-                }
-            }
-            else
-            {
-                // Check if we need to add Azure PostgreSQL suffix
-                if (builder.Environment.IsProduction() && !host.Contains("localhost") && !host.Contains("127.0.0.1"))
-                {
-                    // Assume this is Azure PostgreSQL
-                    // Check if username already contains @ to avoid double formatting
-                    if (username.Contains("@"))
-                    {
-                        // Username already has the correct format, use as is
-                        connectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                        Console.WriteLine($"Using pre-formatted username: {username}");
-                    }
-                    else
-                    {
-                        connectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username}@{host};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                        Console.WriteLine($"Formatted username as: {username}@{host}");
-                    }
-                }
-                else
-                {
-                    // Standard PostgreSQL format
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};Include Error Detail=true";
-                }
-            }
-            
-            Console.WriteLine($"Built connection string from environment variables for host: {host}");
-        }
-        else
-        {
-            Console.WriteLine("ERROR: Missing required PostgreSQL environment variables!");
-        }
-    }
     
     // Log sanitized connection string (without password)
     var sanitizedConnectionString = connectionString;
@@ -257,68 +140,7 @@ app.MapGet("/diagnostics", async (IServiceProvider serviceProvider) => {
     var connectionString = config.GetConnectionString("DefaultConnection");
     var sanitizedConnectionString = "Not available";
     
-    // If connection string has environment variables, build it directly
-    if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("${"))
-    {
-        var host = Environment.GetEnvironmentVariable("POSTGRESQLHOST");
-        var port = Environment.GetEnvironmentVariable("POSTGRESQLPORT") ?? "5432";
-        var database = Environment.GetEnvironmentVariable("POSTGRESQLDATABASE");
-        var username = Environment.GetEnvironmentVariable("POSTGRESQLUSER");
-        var password = Environment.GetEnvironmentVariable("POSTGRESQLPASSWORD");
-        
-        if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(database) && 
-            !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password))
-        {
-            // Format for Azure PostgreSQL
-            if (host.EndsWith(".postgres.database.azure.com"))
-            {
-                // Azure PostgreSQL requires username@servername format
-                var serverName = host.Replace(".postgres.database.azure.com", "");
-                
-                // Check if username already contains @ to avoid double formatting
-                if (username.Contains("@"))
-                {
-                    // Username already has the correct format, use as is
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    Console.WriteLine($"Diagnostics using pre-formatted username: {username}");
-                }
-                else
-                {
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    Console.WriteLine($"Diagnostics formatted username as: {username}@{serverName}");
-                }
-            }
-            else
-            {
-                // Check if we need to add Azure PostgreSQL suffix
-                if (!host.Contains("localhost") && !host.Contains("127.0.0.1"))
-                {
-                    // Assume this is Azure PostgreSQL
-                    // Check if username already contains @ to avoid double formatting
-                    if (username.Contains("@"))
-                    {
-                        // Username already has the correct format, use as is
-                        connectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                        sanitizedConnectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    }
-                    else
-                    {
-                        connectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username}@{host};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                        sanitizedConnectionString = $"Host={host}.postgres.database.azure.com;Port={port};Database={database};Username={username}@{host};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    }
-                }
-                else
-                {
-                    // Standard PostgreSQL format
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};Include Error Detail=true";
-                    sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password=***;Include Error Detail=true";
-                }
-            }
-        }
-    }
-    else if (!string.IsNullOrEmpty(connectionString))
+    if (!string.IsNullOrEmpty(connectionString))
     {
         sanitizedConnectionString = connectionString.Contains("Password=") 
             ? connectionString.Substring(0, connectionString.IndexOf("Password=")) + "Password=***" 
