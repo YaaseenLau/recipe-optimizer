@@ -20,8 +20,15 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 });
 
 // Add health checks including database
+var healthCheckConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// Fix port parameter if needed
+if (healthCheckConnectionString.Contains("${POSTGRESQLPORT}"))
+{
+    healthCheckConnectionString = healthCheckConnectionString.Replace("Port=${POSTGRESQLPORT}", "Port=5432");
+}
+
 builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection"), 
+    .AddNpgSql(healthCheckConnectionString, 
                name: "postgresql", 
                tags: new[] { "database", "postgresql" });
 builder.Services.AddEndpointsApiExplorer();
@@ -46,6 +53,14 @@ builder.Services.AddDbContext<RecipeOptimizerDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     Console.WriteLine($"Configuring DbContext with connection string template: {connectionString}");
+    
+    // Ensure port is properly set to avoid 'Couldn't set port' error
+    if (connectionString.Contains("${POSTGRESQLPORT}"))
+    {
+        // Replace variable with hardcoded port if not properly substituted
+        connectionString = connectionString.Replace("Port=${POSTGRESQLPORT}", "Port=5432");
+        Console.WriteLine("WARNING: POSTGRESQLPORT variable not substituted, using default port 5432");
+    }
     
     options.UseNpgsql(connectionString, npgsqlOptions => 
     {
