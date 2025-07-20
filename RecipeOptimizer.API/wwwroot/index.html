@@ -202,6 +202,17 @@
             box-shadow: 0 0 0 0.25rem rgba(58, 134, 255, 0.25);
         }
         
+        /* Fix dropdown option styling */
+        .form-select option {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+        }
+        
+        /* Fix dropdown background */
+        select.form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+        }
+        
         .form-label {
             color: var(--text-secondary);
             font-weight: 500;

@@ -1,4 +1,3 @@
-// Fixed update ingredient handler
 document.getElementById('updateIngredientBtn').addEventListener('click', function() {
     const id = document.getElementById('editIngredientId').value;
     const name = document.getElementById('editIngredientName').value.trim();

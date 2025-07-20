@@ -1,155 +1,103 @@
-# Recipe Optimizer API
+# Recipe Optimizer
 
-A .NET 7 backend API for optimizing recipe combinations to feed the maximum number of people with available ingredients.
+A full-stack web application that optimizes recipe combinations to feed the maximum number of people with available ingredients. Built with .NET 8 and vanilla JavaScript.
 
-## Project Structure
+## Overview
 
-- **RecipeOptimizer.API**: Web API project with controllers and endpoints
-- **RecipeOptimizer.Core**: Core domain models, interfaces, and business logic
-- **RecipeOptimizer.Infrastructure**: Data access, repositories, and database context
-- **RecipeOptimizer.Tests**: Unit and integration tests
+The Recipe Optimizer solves the common problem of meal planning with limited ingredients. It manages your pantry inventory, stores recipes with their requirements, and calculates optimal recipe combinations to maximize the number of people you can feed.
 
-## Features
+**Key Capabilities:**
+- Ingredient inventory management with quantity tracking
+- Recipe storage with serving sizes and ingredient requirements  
+- Optimization algorithm that maximizes people fed given constraints
+- Real-time UI updates with intelligent sorting
 
-- Ingredient management (CRUD operations)
-- Recipe management (CRUD operations)
-- Recipe optimization algorithm to maximize people fed
-- Swagger UI for API documentation
-- Docker containerization
-- AWS deployment support
+## Architecture
 
-## Local Development Setup
+**Backend (.NET 8 Web API)**
+- `RecipeOptimizer.API` - Controllers and static file serving
+- `RecipeOptimizer.Core` - Domain models and business logic
+- `RecipeOptimizer.Infrastructure` - Entity Framework data access
+- `RecipeOptimizer.Tests` - Unit and integration tests
+
+**Frontend (JavaScript + Bootstrap)**
+- Responsive dark theme UI with modal-based interactions
+- Event-driven architecture with efficient DOM manipulation
+- Real-time data updates without page refreshes
+
+## Getting Started
 
 ### Prerequisites
-
-- .NET 7 SDK
+- .NET 8 SDK
 - Docker Desktop
 - PostgreSQL (via Docker)
 
-### Running Locally
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/recipe-optimizer.git
-   cd recipe-optimizer
-   ```
-
-2. Start PostgreSQL using Docker:
-   ```
-   docker-compose up -d db
-   ```
-
-3. Apply database migrations:
-   ```
-   dotnet ef database update --project RecipeOptimizer.Infrastructure --startup-project RecipeOptimizer.API
-   ```
-
-4. Run the API:
-   ```
-   dotnet run --project RecipeOptimizer.API
-   ```
-
-5. Access the API:
-   - API: https://localhost:7001
-   - Swagger UI: https://localhost:7001/swagger
-
-## Deploying to AWS via GitHub
-
-### Prerequisites
-
-- GitHub account
-- AWS account with appropriate permissions
-- AWS CLI installed and configured
-
-### Step 1: Push to GitHub
-
-1. Create a new repository on GitHub
-2. Push your code to GitHub:
-   ```
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/yourusername/recipe-optimizer.git
-   git push -u origin main
-   ```
-
-### Step 2: Set Up GitHub Secrets
-
-Add the following secrets to your GitHub repository:
-
-1. Go to your GitHub repository → Settings → Secrets and variables → Actions
-2. Add the following secrets:
-   - `AWS_ACCESS_KEY_ID`: Your AWS access key
-   - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
-   - `AWS_REGION`: Your preferred AWS region (e.g., `us-east-1`)
-
-### Step 3: Set Up AWS Resources
-
-#### Create an ECR Repository
+### Setup
 
 ```bash
-aws ecr create-repository --repository-name recipe-optimizer --region your-region
+# Clone and navigate to project
+git clone <repository-url>
+cd Assessment
+
+# Start database
+docker-compose up -d db
+
+# Restore dependencies and apply migrations
+dotnet restore
+dotnet ef database update --project RecipeOptimizer.Infrastructure --startup-project RecipeOptimizer.API
+
+# Run application
+dotnet run --project RecipeOptimizer.API
 ```
 
-#### Create an RDS PostgreSQL Database
+**Access Points:**
+- Application: https://localhost:7001
+- API Documentation: https://localhost:7001/swagger
+
+### Alternative: Full Docker Setup
+```bash
+docker-compose up --build
+```
+
+## Testing
 
 ```bash
-aws rds create-db-instance \
-  --db-instance-identifier recipe-optimizer-db \
-  --db-instance-class db.t3.micro \
-  --engine postgres \
-  --engine-version 14.6 \
-  --master-username postgres \
-  --master-user-password YourStrongPassword \
-  --allocated-storage 20 \
-  --db-name recipeoptimizer \
-  --publicly-accessible \
-  --region your-region
+# Run all tests
+dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
 ```
 
-#### Create an Elastic Beanstalk Application and Environment
+## API Endpoints
 
-```bash
-eb init recipe-optimizer --platform docker --region your-region
-eb create recipe-optimizer-prod --instance_type t2.micro --single
+**Ingredients**
+- `GET /api/ingredients` - List all ingredients
+- `POST /api/ingredients` - Create ingredient
+- `PUT /api/ingredients/{id}` - Update ingredient
+- `DELETE /api/ingredients/{id}` - Delete ingredient
+
+**Recipes**
+- `GET /api/recipes` - List all recipes
+- `POST /api/recipes` - Create recipe
+- `PUT /api/recipes/{id}` - Update recipe
+- `DELETE /api/recipes/{id}` - Delete recipe
+- `POST /api/recipes/optimize` - Get optimal recipe combinations
+
+Complete API documentation available at `/swagger` when running.
+
+## Configuration
+
+Database connection and other settings are configured via `appsettings.json` or environment variables:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=RecipeOptimizer;Username=postgres;Password=password"
+  }
+}
 ```
-
-### Step 4: Configure Environment Variables
-
-In the AWS Elastic Beanstalk Console:
-
-1. Go to your environment → Configuration → Software
-2. Add environment properties:
-   - `RDS_HOSTNAME`: Your RDS endpoint
-   - `RDS_PORT`: 5432
-   - `RDS_DB_NAME`: recipeoptimizer
-   - `RDS_USERNAME`: postgres
-   - `RDS_PASSWORD`: YourStrongPassword
-
-### Step 5: Trigger Deployment
-
-Push changes to your main branch or manually trigger the GitHub Actions workflow:
-
-1. Go to your GitHub repository → Actions
-2. Select the "Deploy to AWS Elastic Beanstalk" workflow
-3. Click "Run workflow"
-
-## Connecting Angular Frontend
-
-Update your Angular environment configuration to point to your Elastic Beanstalk endpoint:
-
-```typescript
-// environment.prod.ts
-export const environment = {
-  production: true,
-  apiUrl: 'https://your-eb-environment-url.elasticbeanstalk.com'
-};
-```
-
-## API Documentation
-
-API documentation is available via Swagger UI at `/swagger` when the application is running.
 
 ## License
 
-[MIT](LICENSE)
+MIT License - see LICENSE file for details.

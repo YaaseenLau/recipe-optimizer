@@ -15,13 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('/api/recipes')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Recipes API response:', data);
+
                     container.innerHTML = '';
                     
                     // Handle ASP.NET Core JSON reference format with $values
                     const recipesArray = Array.isArray(data) ? data : 
                                           (data.$values || data.value || []);
-                    console.log('Processed recipes array:', recipesArray);
+
                     
 
             window.allRecipes = recipesArray;
@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
                     
                     recipesArray.forEach(recipe => {
-                        // Skip $id properties
                         if (recipe === '$id') return;
                         
                         const card = document.createElement('div');
@@ -71,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         `;
                         
-                        // Add hover effect
+
                         card.addEventListener('mouseover', function() {
                             this.style.backgroundColor = 'rgba(255,255,255,0.1)';
                             this.style.transform = 'translateY(-2px)';
@@ -82,24 +81,24 @@ document.addEventListener('DOMContentLoaded', function() {
                             this.style.transform = 'translateY(0)';
                         });
                         
-                        // Add click event to recipe info to show ingredients popup
+
                         const recipeInfo = card.querySelector('.recipe-info');
                         recipeInfo.addEventListener('click', function(e) {
                             e.preventDefault();
                             
-                            // Create ingredients list HTML
+
                             let ingredientsListHtml = '';
                             recipeIngredients.forEach(ri => {
                                 const ingredientName = ri.ingredient && ri.ingredient.name ? ri.ingredient.name : 'Unknown';
                                 ingredientsListHtml += `<li>${ri.requiredQuantity} x ${ingredientName}</li>`;
                             });
                             
-                            // Set modal content
+
                             document.getElementById('recipeDetailsModalLabel').textContent = recipe.name;
                             document.getElementById('recipeServingSize').textContent = recipe.servingSize;
                             document.getElementById('recipeIngredientsList').innerHTML = ingredientsListHtml;
                             
-                            // Show modal
+
                             const recipeDetailsModal = new bootstrap.Modal(document.getElementById('recipeDetailsModal'));
                             recipeDetailsModal.show();
                         });
@@ -114,10 +113,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         };
         
-        // Override the loadIngredients function to properly handle quantities
+
         window.originalLoadIngredients = window.loadIngredients;
         window.loadIngredients = function() {
-            console.log('Using enhanced loadIngredients function');
+
             const container = document.getElementById('ingredients-container');
             container.innerHTML = `
                 <div class="d-flex justify-content-center py-4">
@@ -130,18 +129,18 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('/api/ingredients')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Ingredients API response:', data);
+
                     container.innerHTML = '';
                     
                     // Handle ASP.NET Core JSON reference format with $values
                     const ingredientsArray = Array.isArray(data) ? data : 
                                           (data.$values || data.value || []);
-                    console.log('Processed ingredients array:', ingredientsArray);
+
                     
-                    // Store ingredients globally
+
             window.allIngredients = ingredientsArray;
             
-            // Sort ingredients by available quantity (highest to lowest)
+
             ingredientsArray.sort((a, b) => {
                 const quantityA = a.availableQuantity || a.quantity || a.available || 0;
                 const quantityB = b.availableQuantity || b.quantity || b.available || 0;
@@ -209,7 +208,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         };
         
-        // Helper function to add ingredient row to edit form
         function addIngredientRowToEditForm(ingredientId, quantity) {
             const container = document.getElementById('editRecipeIngredientsContainer');
             const row = document.createElement('div');
@@ -219,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="col-md-8">
                     <select class="form-select ingredient-select" required>
                         <option value="">Select Ingredient</option>
-                        <!-- Options will be populated dynamically -->
+
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -232,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             container.appendChild(row);
             
-            // Populate the ingredient dropdown
+
             const select = row.querySelector('.ingredient-select');
             if (window.allIngredients) {
                 window.allIngredients.forEach(ingredient => {
@@ -246,23 +244,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
-            // Add remove button functionality
+
             const removeBtn = row.querySelector('.remove-ingredient');
             removeBtn.addEventListener('click', function() {
                 row.remove();
             });
         }
         
-        // Enhanced addIngredientButtonListeners function using event delegation
         function addIngredientButtonListeners() {
             console.log('Setting up ingredient button listeners with event delegation');
-            // Event delegation ensures buttons work even after DOM updates
-            // We only need to set this up once
         }
         
-        // Set up event delegation for edit and delete buttons (only once)
+
         document.addEventListener('click', function(e) {
-            // Handle edit recipe button clicks
+
             if (e.target.closest('.edit-recipe-btn')) {
                 e.preventDefault();
                 const button = e.target.closest('.edit-recipe-btn');
@@ -497,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
-            // Handle update recipe button clicks
+
             if (e.target.closest('#updateRecipeBtn')) {
                 e.preventDefault();
                 const button = e.target.closest('#updateRecipeBtn');
@@ -521,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Collect ingredients from the edit form
+
                 const ingredientRows = document.querySelectorAll('#editRecipeIngredientsContainer .recipe-ingredient-row');
                 const ingredients = [];
                 
@@ -610,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
-            // Handle edit ingredient button clicks
+
             if (e.target.closest('.edit-ingredient-btn')) {
                 e.preventDefault();
                 const button = e.target.closest('.edit-ingredient-btn');
@@ -630,7 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 editModal.show();
             }
             
-            // Handle delete ingredient button clicks
+
             if (e.target.closest('.delete-ingredient-btn')) {
                 e.preventDefault();
                 const button = e.target.closest('.delete-ingredient-btn');
@@ -649,7 +644,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Override the update ingredient button click handler
+
         const updateBtn = document.getElementById('updateIngredientBtn');
         if (updateBtn) {
             // Remove existing event listeners by cloning the button
@@ -804,15 +799,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     console.log('Add successful, response:', data);
                     
-                    // Re-enable button
                     newSaveBtn.disabled = false;
                     newSaveBtn.innerHTML = originalText;
-                    
-                    // Close modal
                     const modal = bootstrap.Modal.getInstance(document.getElementById('addIngredientModal'));
                     modal.hide();
                     
-                    // Clear form
+
                     document.getElementById('ingredientName').value = '';
                     document.getElementById('ingredientQuantity').value = '';
                     
@@ -833,13 +825,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Add ingredient button handler fixed!');
         }
         
-        // Update recipe functionality is now handled via event delegation above
-        console.log('Update recipe button functionality added via event delegation');
-        
-        // Save recipe functionality is now handled via event delegation above
-        console.log('Save recipe button functionality added via event delegation');
-        
-        // Run the enhanced functions once to refresh the UI
+
         window.loadIngredients();
         window.loadRecipes();
         
