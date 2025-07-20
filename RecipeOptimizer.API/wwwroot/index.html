@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary-color: #f0f0c2;
+            --primary-color: #ffffff;
             --secondary-color: #f9f9f9;
             --accent-color: #3a86ff;
             --dark-bg: #121212;
@@ -21,6 +21,9 @@
             --info-color: #2196f3;
             --warning-color: #ff9800;
             --danger-color: #f44336;
+            --highlight-color: #ffb42c;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --card-hover: rgba(255, 255, 255, 0.1);
         }
         
         body {
@@ -37,6 +40,7 @@
         
         h1, h2, h3, h4, h5, h6 {
             color: var(--primary-color);
+            font-weight: 600;
         }
         
         .card {
@@ -88,14 +92,22 @@
         }
         
         .badge {
-            font-size: 0.8rem;
-            padding: 0.5rem 0.75rem;
-            border-radius: 20px;
+            font-weight: 500;
+            padding: 0.5em 0.8em;
+            border-radius: 6px;
         }
         
-        .badge-success {
-            background-color: var(--success-color);
-            color: white;
+        .badge-secondary {
+            background-color: #2a2a2a;
+            color: var(--text-secondary);
+        }
+        
+        .badge.bg-primary {
+            background-color: var(--accent-color) !important;
+        }
+        
+        .badge.bg-success {
+            background-color: var(--success-color) !important;
         }
         
         .badge-secondary {
@@ -119,23 +131,49 @@
             box-shadow: 0 6px 12px rgba(58, 134, 255, 0.4);
         }
         
-        .btn-secondary {
-            background-color: #555;
+        .btn-success {
+            background-color: var(--success-color);
             border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-success:hover {
+            background-color: #3d9140;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background-color: #2a2a2a;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        .btn-secondary:hover {
+            background-color: #333333;
+            color: var(--text-primary);
         }
         
         .modal-content {
             background-color: var(--card-bg);
             border-radius: 12px;
+            border: 1px solid var(--border-color);
         }
         
         .modal-header {
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid var(--border-color);
             background-color: var(--card-header);
+            padding: 1.25rem;
         }
         
         .modal-footer {
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid var(--border-color);
+            padding: 1.25rem;
+        }
+        
+        .modal-body {
+            padding: 1.5rem;
         }
         
         .result-section {
@@ -148,6 +186,26 @@
             background-color: rgba(33, 150, 243, 0.15);
             border: 1px solid rgba(33, 150, 243, 0.3);
             color: var(--text-primary);
+        }
+        
+        .form-control, .form-select {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 6px;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.25rem rgba(58, 134, 255, 0.25);
+        }
+        
+        .form-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
         }
         
         ul {
@@ -210,9 +268,30 @@
             padding: 0.75rem !important;
             margin-bottom: 0.5rem !important;
             background-color: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             transition: all 0.2s ease;
+        }
+        
+        .ingredient-item:hover,
+        .recipe-item:hover {
+            background-color: var(--card-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn-outline-warning {
+            color: var(--highlight-color);
+            border-color: var(--highlight-color);
+        }
+        
+        .btn-outline-warning:hover {
+            background-color: var(--highlight-color);
+            color: #000;
+        }
+        
+        .btn-outline-danger {
+            color: var(--danger-color);
+            border-color: var(--danger-color);
         }
         
         #ingredients-container,
