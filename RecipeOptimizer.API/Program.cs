@@ -118,7 +118,7 @@ builder.Services.AddDbContext<RecipeOptimizerDbContext>(options =>
                 {
                     // Azure PostgreSQL requires username@servername format
                     var serverName = host.Replace(".postgres.database.azure.com", "");
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
                     Console.WriteLine($"Built DbContext connection string from environment variables for host: {host}");
                 }
             }
@@ -248,8 +248,8 @@ app.MapGet("/diagnostics", async (IServiceProvider serviceProvider) => {
                 {
                     // Azure PostgreSQL requires username@servername format
                     var serverName = host.Replace(".postgres.database.azure.com", "");
-                    connectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-                    sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                    connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                    sanitizedConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password=***;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
                     Console.WriteLine($"Built diagnostics connection string from environment variables for host: {host}");
                 }
             }
