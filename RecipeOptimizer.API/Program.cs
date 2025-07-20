@@ -49,7 +49,7 @@ if (builder.Environment.IsProduction())
             {
                 // Azure PostgreSQL requires username@servername format
                 var serverName = host.Replace(".postgres.database.azure.com", "");
-                healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username}@{serverName};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+                healthCheckConnectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
                 Console.WriteLine($"Built health check connection string from environment variables for host: {host}");
             }
         }
